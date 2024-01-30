@@ -9,9 +9,9 @@ import (
 
 	"github.com/didip/tollbooth/v6"
 	"github.com/didip/tollbooth/v6/libstring"
-	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/gorilla/handlers"
+	"github.com/sllt/log"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/umputun/reproxy/app/discovery"
@@ -49,7 +49,7 @@ func maxReqSizeHandler(maxSize int64) func(next http.Handler) http.Handler {
 		return passThroughHandler
 	}
 
-	log.Printf("[DEBUG] request size limited to %d", maxSize)
+	log.Debugf("[DEBUG] request size limited to %d", maxSize)
 	return func(next http.Handler) http.Handler {
 
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,7 @@ func stdoutLogHandler(enable bool, lh func(next http.Handler) http.Handler) func
 		return passThroughHandler
 	}
 
-	log.Printf("[DEBUG] stdout logging enabled")
+	log.Debug("stdout logging enabled")
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			// don't log to stdout GET ~/(.*)/ping$ requests
@@ -98,7 +98,7 @@ func gzipHandler(enabled bool) func(next http.Handler) http.Handler {
 		return passThroughHandler
 	}
 
-	log.Printf("[DEBUG] gzip enabled")
+	log.Debug("gzip enabled")
 	return handlers.CompressHandler
 }
 
@@ -106,7 +106,7 @@ func signatureHandler(enabled bool, version string) func(next http.Handler) http
 	if !enabled {
 		return passThroughHandler
 	}
-	log.Printf("[DEBUG] signature headers enabled")
+	log.Debug("signature headers enabled")
 	return R.AppInfo("reproxy", "umputun", version)
 }
 

@@ -3,10 +3,11 @@ package proxy
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/sllt/log"
+	"github.com/umputun/reproxy/logger"
 	"net/http"
 	"strings"
 
-	log "github.com/go-pkgz/lgr"
 	"golang.org/x/crypto/acme/autocert"
 
 	R "github.com/go-pkgz/rest"
@@ -40,8 +41,8 @@ type SSLConfig struct {
 // httpToHTTPSRouter creates new router which does redirect from http to https server
 // with default middlewares. Used in 'static' ssl mode.
 func (h *Http) httpToHTTPSRouter() http.Handler {
-	log.Printf("[DEBUG] create https-to-http redirect routes")
-	return R.Wrap(h.redirectHandler(), R.Recoverer(log.Default()))
+	log.Debugf("create https-to-http redirect routes")
+	return R.Wrap(h.redirectHandler(), R.Recoverer(logger.DefaultLogger))
 }
 
 // httpChallengeRouter creates new router which performs ACME "http-01" challenge response
@@ -49,8 +50,8 @@ func (h *Http) httpToHTTPSRouter() http.Handler {
 // If it receives not a acme challenge it performs redirect to https server.
 // Used in 'auto' ssl mode.
 func (h *Http) httpChallengeRouter(m *autocert.Manager) http.Handler {
-	log.Printf("[DEBUG] create http-challenge routes")
-	return R.Wrap(m.HTTPHandler(h.redirectHandler()), R.Recoverer(log.Default()))
+	log.Debugf("create http-challenge routes")
+	return R.Wrap(m.HTTPHandler(h.redirectHandler()), R.Recoverer(logger.DefaultLogger))
 }
 
 func (h *Http) redirectHandler() http.Handler {
@@ -65,7 +66,7 @@ func (h *Http) redirectHandler() http.Handler {
 }
 
 func (h *Http) makeAutocertManager() *autocert.Manager {
-	log.Printf("[DEBUG] autocert manager for domains: %+v, location: %s, email: %q",
+	log.Debugf("autocert manager for domains: %+v, location: %s, email: %q",
 		h.SSLConfig.FQDNs, h.SSLConfig.ACMELocation, h.SSLConfig.ACMEEmail)
 	return &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,

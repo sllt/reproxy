@@ -5,6 +5,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/logger"
+	"github.com/sllt/log"
+	L "github.com/umputun/reproxy/logger"
 	"io"
 	"net"
 	"net/http"
@@ -16,10 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	log "github.com/go-pkgz/lgr"
-	R "github.com/go-pkgz/rest"
-	"github.com/go-pkgz/rest/logger"
 
 	"github.com/umputun/reproxy/app/discovery"
 	"github.com/umputun/reproxy/app/plugin"
@@ -100,9 +100,9 @@ type Timeouts struct {
 func (h *Http) Run(ctx context.Context) error {
 
 	if h.AssetsLocation != "" {
-		log.Printf("[DEBUG] assets file server enabled for %s, webroot %s", h.AssetsLocation, h.AssetsWebRoot)
+		log.Debugf("assets file server enabled for %s, webroot %s", h.AssetsLocation, h.AssetsWebRoot)
 		if h.Assets404 != "" {
-			log.Printf("[DEBUG] assets 404 file enabled for %s", h.Assets404)
+			log.Debugf("assets 404 file enabled for %s", h.Assets404)
 		}
 	}
 
@@ -116,18 +116,18 @@ func (h *Http) Run(ctx context.Context) error {
 		<-ctx.Done()
 		if httpServer != nil {
 			if err := httpServer.Close(); err != nil {
-				log.Printf("[ERROR] failed to close proxy http server, %v", err)
+				log.Errorf("failed to close proxy http server, %v", err)
 			}
 		}
 		if httpsServer != nil {
 			if err := httpsServer.Close(); err != nil {
-				log.Printf("[ERROR] failed to close proxy https server, %v", err)
+				log.Errorf("failed to close proxy https server, %v", err)
 			}
 		}
 	}()
 
 	handler := R.Wrap(h.proxyHandler(),
-		R.Recoverer(log.Default()),                               // recover on errors
+		R.Recoverer(L.DefaultLogger),                             // recover on errors
 		signatureHandler(h.Signature, h.Version),                 // send app signature
 		h.pingHandler,                                            // respond to /ping
 		basicAuthHandler(h.BasicAuthEnabled, h.BasicAuthAllowed), // basic auth
@@ -140,7 +140,7 @@ func (h *Http) Run(ctx context.Context) error {
 		h.pluginHandler(),                                        // prc to external plugins
 		headersHandler(h.ProxyHeaders, h.DropHeader),             // add response headers and delete some request headers
 		accessLogHandler(h.AccessLog),                            // apache-format log file
-		stdoutLogHandler(h.StdOutEnabled, logger.New(logger.Log(log.Default()), logger.Prefix("[INFO]")).Handler),
+		stdoutLogHandler(h.StdOutEnabled, logger.New(logger.Log(L.DefaultLogger), logger.Prefix("[INFO]")).Handler),
 		maxReqSizeHandler(h.MaxBodySize), // limit request max size
 		gzipHandler(h.GzEnabled),         // gzip response
 	)
@@ -152,40 +152,40 @@ func (h *Http) Run(ctx context.Context) error {
 
 	switch h.SSLConfig.SSLMode {
 	case SSLNone:
-		log.Printf("[INFO] activate http proxy server on %s", h.Address)
+		log.Infof("activate http proxy server on %s", h.Address)
 		httpServer = h.makeHTTPServer(h.Address, handler)
-		httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		httpServer.ErrorLog = L.StdLogger()
 		return httpServer.ListenAndServe()
 	case SSLStatic:
-		log.Printf("[INFO] activate https server in 'static' mode on %s", h.Address)
+		log.Info("activate https server in 'static' mode on %s", h.Address)
 
 		httpsServer = h.makeHTTPSServer(h.Address, handler)
-		httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		httpsServer.ErrorLog = L.StdLogger()
 
 		httpServer = h.makeHTTPServer(h.toHTTP(h.Address, h.SSLConfig.RedirHTTPPort), h.httpToHTTPSRouter())
-		httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		httpServer.ErrorLog = L.StdLogger()
 
 		go func() {
-			log.Printf("[INFO] activate http redirect server on %s", h.toHTTP(h.Address, h.SSLConfig.RedirHTTPPort))
+			log.Info("activate http redirect server on %s", h.toHTTP(h.Address, h.SSLConfig.RedirHTTPPort))
 			err := httpServer.ListenAndServe()
-			log.Printf("[WARN] http redirect server terminated, %s", err)
+			log.Warnf("http redirect server terminated, %s", err)
 		}()
 		return httpsServer.ListenAndServeTLS(h.SSLConfig.Cert, h.SSLConfig.Key)
 	case SSLAuto:
-		log.Printf("[INFO] activate https server in 'auto' mode on %s", h.Address)
-		log.Printf("[DEBUG] FQDNs %v", h.SSLConfig.FQDNs)
+		log.Info("activate https server in 'auto' mode on %s", h.Address)
+		log.Debugf("FQDNs %v", h.SSLConfig.FQDNs)
 
 		m := h.makeAutocertManager()
 		httpsServer = h.makeHTTPSAutocertServer(h.Address, handler, m)
-		httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		httpsServer.ErrorLog = L.StdLogger()
 
 		httpServer = h.makeHTTPServer(h.toHTTP(h.Address, h.SSLConfig.RedirHTTPPort), h.httpChallengeRouter(m))
-		httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		httpServer.ErrorLog = L.StdLogger()
 
 		go func() {
-			log.Printf("[INFO] activate http challenge server on port %s", h.toHTTP(h.Address, h.SSLConfig.RedirHTTPPort))
+			log.Info("activate http challenge server on port %s", h.toHTTP(h.Address, h.SSLConfig.RedirHTTPPort))
 			err := httpServer.ListenAndServe()
-			log.Printf("[WARN] http challenge server terminated, %s", err)
+			log.Warnf("http challenge server terminated, %s", err)
 		}()
 
 		return httpsServer.ListenAndServeTLS("", "")
@@ -227,7 +227,7 @@ func (h *Http) proxyHandler() http.HandlerFunc {
 			ExpectContinueTimeout: h.Timeouts.ExpectContinue,
 			TLSClientConfig:       &tls.Config{InsecureSkipVerify: h.Insecure}, //nolint:gosec // G402: User defined option to disable verification for self-signed certificates
 		},
-		ErrorLog: log.ToStdLogger(log.Default(), "WARN"),
+		ErrorLog: L.StdLogger(),
 	}
 	assetsHandler := h.assetsHandler()
 
@@ -238,7 +238,7 @@ func (h *Http) proxyHandler() http.HandlerFunc {
 				assetsHandler.ServeHTTP(w, r)
 				return
 			}
-			log.Printf("[WARN] no match for %s %s", r.URL.Hostname(), r.URL.Path)
+			log.Warnf("no match for %s %s", r.URL.Hostname(), r.URL.Path)
 			h.Reporter.Report(w, http.StatusBadGateway)
 			return
 		}
@@ -251,13 +251,13 @@ func (h *Http) proxyHandler() http.HandlerFunc {
 			switch match.Mapper.RedirectType {
 			case discovery.RTNone:
 				uu := r.Context().Value(ctxURL).(*url.URL)
-				log.Printf("[DEBUG] proxy to %s", uu)
+				log.Debugf("proxy to %s", uu)
 				reverseProxy.ServeHTTP(w, r)
 			case discovery.RTPerm:
-				log.Printf("[DEBUG] redirect (301) to %s", match.Destination)
+				log.Debugf("redirect (301) to %s", match.Destination)
 				http.Redirect(w, r, match.Destination, http.StatusMovedPermanently)
 			case discovery.RTTemp:
-				log.Printf("[DEBUG] redirect (302) to %s", match.Destination)
+				log.Debugf("redirect (302) to %s", match.Destination)
 				http.Redirect(w, r, match.Destination, http.StatusFound)
 			}
 
@@ -265,13 +265,13 @@ func (h *Http) proxyHandler() http.HandlerFunc {
 			// static match result has webroot:location:[spa:normal], i.e. /www:/var/somedir/:normal
 			ae := strings.Split(match.Destination, ":")
 			if len(ae) != 3 { // shouldn't happen
-				log.Printf("[WARN] unexpected static assets destination: %s", match.Destination)
+				log.Warnf("unexpected static assets destination: %s", match.Destination)
 				h.Reporter.Report(w, http.StatusInternalServerError)
 				return
 			}
 			fs, err := h.fileServer(ae[0], ae[1], ae[2] == "spa", nil)
 			if err != nil {
-				log.Printf("[WARN] file server error, %v", err)
+				log.Warnf("file server error, %v", err)
 				h.Reporter.Report(w, http.StatusInternalServerError)
 				return
 			}
@@ -320,7 +320,7 @@ func (h *Http) matchHandler(next http.Handler) http.Handler {
 			if matches.MatchType == discovery.MTProxy {
 				uu, err := url.Parse(match.Destination)
 				if err != nil {
-					log.Printf("[WARN] can't parse destination %s, %v", match.Destination, err)
+					log.Warnf("can't parse destination %s, %v", match.Destination, err)
 					h.Reporter.Report(w, http.StatusBadGateway)
 					return
 				}
@@ -341,17 +341,17 @@ func (h *Http) assetsHandler() http.HandlerFunc {
 	var err error
 	if h.Assets404 != "" {
 		if notFound, err = os.ReadFile(filepath.Join(h.AssetsLocation, h.Assets404)); err != nil {
-			log.Printf("[WARN] can't read  404 file %s, %v", h.Assets404, err)
+			log.Warnf("can't read  404 file %s, %v", h.Assets404, err)
 			notFound = nil
 		}
 	}
 
-	log.Printf("[DEBUG] shared assets server enabled for %s %s, spa=%v, not-found=%q",
+	log.Debugf("shared assets server enabled for %s %s, spa=%v, not-found=%q",
 		h.AssetsLocation, h.AssetsWebRoot, h.AssetsSPA, h.Assets404)
 
 	fs, err := h.fileServer(h.AssetsWebRoot, h.AssetsLocation, h.AssetsSPA, notFound)
 	if err != nil {
-		log.Printf("[WARN] can't initialize assets server, %v", err)
+		log.Warnf("can't initialize assets server, %v", err)
 		return func(writer http.ResponseWriter, request *http.Request) {}
 	}
 	return h.CacheControl.Middleware(fs).ServeHTTP
@@ -385,7 +385,7 @@ func (h *Http) pluginHandler() func(next http.Handler) http.Handler {
 	if h.PluginConductor == nil {
 		return passThroughHandler
 	}
-	log.Printf("[INFO] plugin support enabled")
+	log.Info("plugin support enabled")
 	return h.PluginConductor.Middleware
 }
 
@@ -393,7 +393,7 @@ func (h *Http) mgmtHandler() func(next http.Handler) http.Handler {
 	if h.Metrics == nil {
 		return passThroughHandler
 	}
-	log.Printf("[DEBUG] metrics enabled")
+	log.Debugf("metrics enabled")
 	return h.Metrics.Middleware
 }
 

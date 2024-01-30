@@ -3,7 +3,7 @@ package mgmt
 import (
 	"bufio"
 	"errors"
-	"log"
+	"github.com/sllt/log"
 	"net"
 	"net/http"
 	"strconv"
@@ -48,13 +48,13 @@ func NewMetrics() *Metrics {
 	prometheus.Unregister(prometheus.NewGoCollector()) //nolint
 
 	if err := prometheus.Register(res.totalRequests); err != nil {
-		log.Printf("[WARN] can't register prometheus totalRequests, %v", err)
+		log.Warnf("can't register prometheus totalRequests, %v", err)
 	}
 	if err := prometheus.Register(res.responseStatus); err != nil {
-		log.Printf("[WARN] can't register prometheus responseStatus, %v", err)
+		log.Warnf("can't register prometheus responseStatus, %v", err)
 	}
 	if err := prometheus.Register(res.httpDuration); err != nil {
-		log.Printf("[WARN] can't register prometheus httpDuration, %v", err)
+		log.Warnf("can't register prometheus httpDuration, %v", err)
 	}
 
 	return res

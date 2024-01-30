@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/sllt/log"
 	"io"
 	"math/rand"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

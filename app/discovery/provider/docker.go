@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sllt/log"
 	"net"
 	"net/http"
 	"regexp"
@@ -11,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	log "github.com/go-pkgz/lgr"
 
 	"github.com/umputun/reproxy/app/discovery"
 )
@@ -56,7 +55,7 @@ func (d *Docker) Events(ctx context.Context) (res <-chan discovery.ProviderID) {
 	eventsCh := make(chan discovery.ProviderID)
 	go func() {
 		if err := d.events(ctx, eventsCh); err != context.Canceled {
-			log.Printf("[ERROR] unexpected docker client exit reason: %s", err)
+			log.Errorf("unexpected docker client exit reason: %s", err)
 		}
 	}()
 	return eventsCh
@@ -96,7 +95,7 @@ func (d *Docker) parseContainerInfo(c containerInfo) (res []discovery.URLMapper)
 
 		port, err := d.matchedPort(c, n)
 		if err != nil {
-			log.Printf("[DEBUG] container %s (route: %d) disabled, %v", c.Name, n, err)
+			log.Debugf("container %s (route: %d) disabled, %v", c.Name, n, err)
 			continue
 		}
 
@@ -169,7 +168,7 @@ func (d *Docker) parseContainerInfo(c containerInfo) (res []discovery.URLMapper)
 
 		srcRegex, err := regexp.Compile(srcURL)
 		if err != nil {
-			log.Printf("[DEBUG] container %s (route: %d) disabled, invalid src regex: %v", c.Name, n, err)
+			log.Debugf("container %s (route: %d) disabled, invalid src regex: %v", c.Name, n, err)
 			continue
 		}
 
@@ -244,7 +243,7 @@ func (d *Docker) events(ctx context.Context, eventsCh chan<- discovery.ProviderI
 	update := func() {
 		containers, err := d.listContainers(false)
 		if err != nil {
-			log.Printf("[ERROR] failed to fetch running containers: %s", err)
+			log.Errorf("failed to fetch running containers: %s", err)
 			return
 		}
 
@@ -262,7 +261,7 @@ func (d *Docker) events(ctx context.Context, eventsCh chan<- discovery.ProviderI
 		}
 
 		if len(saved) != len(seen) || refresh {
-			log.Printf("[INFO] changes in running containers detected: refreshing routes")
+			log.Infof("changes in running containers detected: refreshing routes")
 			for k := range saved {
 				delete(saved, k)
 			}
@@ -291,20 +290,20 @@ func (d *Docker) listContainers(allowLogging bool) (res []containerInfo, err err
 	}
 
 	if allowLogging {
-		log.Printf("[DEBUG] total containers = %d", len(containers))
+		log.Debugf("total containers = %d", len(containers))
 	}
 
 	for _, c := range containers {
 		if c.State != "running" {
 			if allowLogging {
-				log.Printf("[DEBUG] skip container %s due to state %s", c.Name, c.State)
+				log.Debugf("skip container %s due to state %s", c.Name, c.State)
 			}
 			continue
 		}
 
 		if discovery.Contains(c.Name, d.Excludes) || strings.EqualFold(c.Name, "reproxy") {
 			if allowLogging {
-				log.Printf("[DEBUG] container %s excluded", c.Name)
+				log.Debugf("container %s excluded", c.Name)
 			}
 			continue
 		}
@@ -312,7 +311,7 @@ func (d *Docker) listContainers(allowLogging bool) (res []containerInfo, err err
 		if v, ok := c.Labels["reproxy.enabled"]; ok {
 			if strings.EqualFold(v, "false") || strings.EqualFold(v, "no") || v == "0" {
 				if allowLogging {
-					log.Printf("[DEBUG] skip container %s due to reproxy.enabled=%s", c.Name, v)
+					log.Debugf("skip container %s due to reproxy.enabled=%s", c.Name, v)
 				}
 				continue
 			}
@@ -320,25 +319,25 @@ func (d *Docker) listContainers(allowLogging bool) (res []containerInfo, err err
 
 		if c.IP == "" {
 			if allowLogging {
-				log.Printf("[DEBUG] skip container %s, no ip on defined networks", c.Name)
+				log.Debugf("skip container %s, no ip on defined networks", c.Name)
 			}
 			continue
 		}
 
 		if len(c.Ports) == 0 {
 			if allowLogging {
-				log.Printf("[DEBUG] skip container %s, no exposed ports", c.Name)
+				log.Debugf("skip container %s, no exposed ports", c.Name)
 			}
 			continue
 		}
 
 		if allowLogging {
-			log.Printf("[DEBUG] running container added, %+v", c)
+			log.Debugf("running container added, %+v", c)
 		}
 		res = append(res, c)
 	}
 	if allowLogging {
-		log.Print("[DEBUG] completed list")
+		log.Debugf("completed list")
 	}
 	return res, nil
 }
@@ -353,7 +352,7 @@ func NewDockerClient(host, network string) DockerClient {
 	var schemaRegex = regexp.MustCompile("^(?:([a-z0-9]+)://)?(.*)$")
 	parts := schemaRegex.FindStringSubmatch(host)
 	proto, addr := parts[1], parts[2]
-	log.Printf("[DEBUG] configuring docker client to talk to %s via %s", addr, proto)
+	log.Debugf("configuring docker client to talk to %s via %s", addr, proto)
 
 	client := http.Client{
 		Transport: &http.Transport{

@@ -10,8 +10,8 @@ import (
 	"net/rpc"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
+	"github.com/sllt/log"
 )
 
 // Plugin provides cancelable rpc server used to run custom plugins

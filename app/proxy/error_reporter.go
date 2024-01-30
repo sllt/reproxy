@@ -1,8 +1,8 @@
 package proxy
 
 import (
+	"github.com/sllt/log"
 	"html/template"
-	"log"
 	"net/http"
 	"sync"
 )
@@ -27,7 +27,7 @@ func (em *ErrorReporter) Report(w http.ResponseWriter, code int) {
 		}
 		tp, err := template.New("errmsg").Parse(em.Template)
 		if err != nil {
-			log.Printf("[WARN] failed to parse error template, %v", err)
+			log.Warnf("failed to parse error template, %v", err)
 			return
 		}
 		em.tmpl.Template = tp

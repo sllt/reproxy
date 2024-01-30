@@ -3,12 +3,12 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/sllt/log"
 	"os"
 	"regexp"
 	"sort"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"gopkg.in/yaml.v3"
 
 	"github.com/umputun/reproxy/app/discovery"
@@ -38,10 +38,10 @@ func (d *File) Events(ctx context.Context) <-chan discovery.ProviderID {
 	// check once if config file in place and it is file for real and not a directory
 	fi, err := os.Stat(d.FileName)
 	if err != nil {
-		log.Printf("[WARN] configuration file %s not found", d.FileName)
+		log.Warn("configuration file %s not found", d.FileName)
 	}
 	if err == nil && fi.IsDir() {
-		log.Printf("[WARN] %s is directory but configuration file expected", d.FileName)
+		log.Printf("%s is directory but configuration file expected", d.FileName)
 	}
 
 	go func() {
@@ -59,7 +59,7 @@ func (d *File) Events(ctx context.Context) <-chan discovery.ProviderID {
 					if fi.ModTime().Sub(lastModif) < d.Delay {
 						continue
 					}
-					log.Printf("[DEBUG] file %s changed, %s -> %s", d.FileName,
+					log.Debugf("file %s changed, %s -> %s", d.FileName,
 						lastModif.Format(time.RFC3339Nano), fi.ModTime().Format(time.RFC3339Nano))
 					if trySubmit(res) {
 						lastModif = fi.ModTime()
@@ -95,7 +95,7 @@ func (d *File) List() (res []discovery.URLMapper, err error) {
 	if err = yaml.NewDecoder(fh).Decode(&fileConf); err != nil {
 		return nil, fmt.Errorf("can't parse %s: %w", d.FileName, err)
 	}
-	log.Printf("[DEBUG] file provider %+v", res)
+	log.Debugf("file provider %+v", res)
 
 	for srv, fl := range fileConf {
 		for _, f := range fl {

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
+	"github.com/sllt/log"
 
 	"github.com/umputun/reproxy/app/discovery"
 )
@@ -59,7 +59,7 @@ func (h *Http) healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, err := fmt.Fprintf(w, `{"status": "ok", "services": %d}`, total)
 	if err != nil {
-		log.Printf("[WARN] failed to send health, %v", err)
+		log.Warnf("failed to send health, %v", err)
 	}
 }
 

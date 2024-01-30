@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/sllt/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -12,10 +15,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	log "github.com/go-pkgz/lgr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/reproxy/app/discovery"
 	"github.com/umputun/reproxy/lib"

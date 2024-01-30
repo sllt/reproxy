@@ -3,10 +3,11 @@ package mgmt
 
 import (
 	"context"
+	"github.com/sllt/log"
+	"github.com/umputun/reproxy/logger"
 	"net/http"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -39,7 +40,7 @@ func (s *Server) Run(ctx context.Context) error {
 	handler.HandleFunc("/routes", s.routesCtrl())
 	handler.Handle("/metrics", promhttp.Handler())
 	h := rest.Wrap(handler,
-		rest.Recoverer(log.Default()),
+		rest.Recoverer(logger.DefaultLogger),
 		rest.AppInfo("reproxy-mgmt", "umputun", s.Version),
 		rest.Ping,
 	)

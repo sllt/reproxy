@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/umputun/go-flags"
 	"gopkg.in/natefinch/lumberjack.v2"
 
+	"github.com/sllt/log"
 	"github.com/umputun/reproxy/app/discovery"
 	"github.com/umputun/reproxy/app/discovery/provider"
 	"github.com/umputun/reproxy/app/discovery/provider/consulcatalog"
@@ -135,20 +135,18 @@ var opts struct {
 var revision = "unknown"
 
 func main() {
-	fmt.Printf("reproxy %s\n", revision)
-
 	p := flags.NewParser(&opts, flags.PrintErrors|flags.PassDoubleDash|flags.HelpFlag)
 	p.SubcommandsOptional = true
 	if _, err := p.Parse(); err != nil {
 		if err.(*flags.Error).Type != flags.ErrHelp {
-			log.Printf("[ERROR] cli error: %v", err)
+			log.Errorf("cli error: %v", err)
 		}
 		os.Exit(2)
 	}
 
 	setupLog(opts.Dbg)
 
-	log.Printf("[DEBUG] options: %+v", opts)
+	log.Debugf("options: %+v", opts)
 
 	err := run()
 	if err != nil {
@@ -164,14 +162,14 @@ func run() error {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		<-stop
-		log.Printf("[WARN] interrupt signal")
+		log.Warnf("interrupt signal")
 		cancel()
 	}()
 
 	defer func() {
 		// handle panic
 		if x := recover(); x != nil {
-			log.Printf("[WARN] run time panic:\n%v", x)
+			log.Warnf("runtime panic:\n%v", x)
 			panic(x)
 		}
 	}()
@@ -185,7 +183,7 @@ func run() error {
 	if len(providers) > 0 {
 		go func() {
 			if e := svc.Run(context.Background()); e != nil {
-				log.Printf("[WARN] discovery failed, %v", e)
+				log.Warnf("discovery failed, %v", e)
 			}
 		}()
 	}
@@ -205,7 +203,7 @@ func run() error {
 
 	defer func() {
 		if logErr := accessLog.Close(); logErr != nil {
-			log.Printf("[WARN] can't close access log, %v", logErr)
+			log.Warnf("can't close access log, %v", logErr)
 		}
 	}()
 
@@ -220,7 +218,7 @@ func run() error {
 	}
 
 	addr := listenAddress(opts.Listen, opts.SSL.Type)
-	log.Printf("[DEBUG] listen address %s", addr)
+	log.Debugf("listen address %s", addr)
 
 	maxBodySize, perr := sizeParse(opts.MaxSize)
 	if perr != nil {
@@ -279,7 +277,7 @@ func run() error {
 
 	err = px.Run(ctx)
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		log.Printf("[WARN] proxy server closed, %v", err) // nolint gocritic
+		log.Warnf("proxy server closed, %v", err) // nolint gocritic
 		return nil
 	}
 	return err
@@ -313,7 +311,8 @@ func makeProviders() ([]discovery.Provider, error) {
 		for _, rule := range opts.Static.Rules {
 			msgs = append(msgs, "\""+rule+"\"")
 		}
-		log.Printf("[DEBUG] inject static rules: %s", strings.Join(msgs, " "))
+
+		log.Debugf("inject static rules: %s", strings.Join(msgs, " "))
 		res = append(res, &provider.Static{Rules: opts.Static.Rules})
 	}
 
@@ -329,7 +328,7 @@ func makeProviders() ([]discovery.Provider, error) {
 		client := provider.NewDockerClient(opts.Docker.Host, opts.Docker.Network)
 
 		if opts.Docker.AutoAPI {
-			log.Printf("[INFO] auto-api enabled for docker")
+			log.Info("auto-api enabled for docker")
 		}
 
 		const refreshInterval = time.Second * 10 // seems like a reasonable default
@@ -362,7 +361,7 @@ func makePluginConductor(ctx context.Context) proxy.MiddlewareProvider {
 	}
 	go func() {
 		if err := conductor.Run(ctx); err != nil {
-			log.Printf("[WARN] plugin conductor error, %v", err)
+			log.Warnf("plugin conductor error, %v", err)
 		}
 	}()
 	return conductor
@@ -382,7 +381,7 @@ func makeMetrics(ctx context.Context, informer mgmt.Informer) proxy.MiddlewarePr
 			Version:        revision,
 		}
 		if err := mgSrv.Run(ctx); err != nil {
-			log.Printf("[WARN] management service failed, %v", err)
+			log.Warnf("management service failed, %v", err)
 		}
 	}()
 	return metrics
@@ -461,7 +460,7 @@ func makeAccessLogWriter() (accessLog io.WriteCloser, err error) {
 
 	maxSize /= 1048576
 
-	log.Printf("[INFO] logger enabled for %s, max size %dM", opts.Logger.FileName, maxSize)
+	log.Infof("logger enabled for %s, max size %dM", opts.Logger.FileName, maxSize)
 	return &lumberjack.Logger{
 		Filename:   opts.Logger.FileName,
 		MaxSize:    int(maxSize), // in MB
@@ -578,8 +577,7 @@ func (n nopWriteCloser) Close() error { return nil }
 
 func setupLog(dbg bool) {
 	if dbg {
-		log.Setup(log.Debug, log.CallerFile, log.CallerFunc, log.Msec, log.LevelBraces)
-		return
+		log.SetLevel(log.DebugLevel)
+		log.SetReportCaller(true)
 	}
-	log.Setup(log.Msec, log.LevelBraces)
 }

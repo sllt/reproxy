@@ -2,11 +2,10 @@ package proxy
 
 import (
 	"bytes"
+	"github.com/sllt/log"
 	"net"
 	"net/http"
 	"strings"
-
-	log "github.com/go-pkgz/lgr"
 
 	"github.com/umputun/reproxy/app/discovery"
 )
@@ -52,7 +51,7 @@ func (o *OnlyFrom) Handler(next http.Handler) http.Handler {
 			return
 		}
 		w.WriteHeader(http.StatusForbidden)
-		log.Printf("[INFO] ip %q rejected for %s", realIP, r.URL.String())
+		log.Infof("ip %q rejected for %s", realIP, r.URL.String())
 	}
 	return http.HandlerFunc(fn)
 }

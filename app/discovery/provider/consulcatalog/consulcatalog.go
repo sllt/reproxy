@@ -3,7 +3,7 @@ package consulcatalog
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/sllt/log"
 	"regexp"
 	"sort"
 	"strings"
@@ -58,7 +58,7 @@ func (cc *ConsulCatalog) Events(ctx context.Context) (res <-chan discovery.Provi
 	eventsCh := make(chan discovery.ProviderID)
 	go func() {
 		if err := cc.events(ctx, eventsCh); err != context.Canceled {
-			log.Printf("[ERROR] unexpected consulcatalog events error: %s", err)
+			log.Errorf("unexpected consulcatalog events error: %s", err)
 		}
 	}()
 	return eventsCh
@@ -71,7 +71,7 @@ func (cc *ConsulCatalog) events(ctx context.Context, eventsCh chan<- discovery.P
 	for {
 		err = cc.checkUpdates(eventsCh)
 		if err != nil {
-			log.Printf("[ERROR] error update consul catalog data, %v", err)
+			log.Errorf("error update consul catalog data, %v", err)
 		}
 
 		select {
@@ -125,7 +125,7 @@ func (cc *ConsulCatalog) updateServices(services []consulService) {
 // List all containers and make url mappers
 // If AutoAPI enabled all each container and set all params, if not - allow only container with reproxy.* tags
 func (cc *ConsulCatalog) List() ([]discovery.URLMapper, error) {
-	log.Print("[DEBUG] call consul catalog list")
+	log.Debug("call consul catalog list")
 
 	res := make([]discovery.URLMapper, 0, len(cc.list))
 
@@ -171,7 +171,7 @@ func (cc *ConsulCatalog) List() ([]discovery.URLMapper, error) {
 		}
 
 		if !enabled {
-			log.Printf("[DEBUG] service %s disabled", c.ServiceID)
+			log.Debugf("service %s disabled", c.ServiceID)
 			continue
 		}
 

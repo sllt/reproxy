@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
+	"github.com/sllt/log"
 )
 
 //go:generate moq -out provider_mock.go -fmt goimports . Provider
@@ -128,7 +128,7 @@ func (s *Service) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case ev := <-ch:
-			log.Printf("[DEBUG] new update event received, %s", ev)
+			log.Debugf("new update event received, %s", ev)
 			evRecv = true
 		case <-time.After(s.interval):
 			if !evRecv {
@@ -142,10 +142,10 @@ func (s *Service) Run(ctx context.Context) error {
 					onlyFrom = fmt.Sprintf(" +[%v]", strings.Join(m.OnlyFromIPs, ",")) // show onlyFrom if set
 				}
 				if m.MatchType == MTProxy {
-					log.Printf("[INFO] proxy  %s: %s %s -> %s%s", m.ProviderID, m.Server, m.SrcMatch.String(), m.Dst, onlyFrom)
+					log.Infof("proxy  %s: %s %s -> %s%s", m.ProviderID, m.Server, m.SrcMatch.String(), m.Dst, onlyFrom)
 				}
 				if m.MatchType == MTStatic {
-					log.Printf("[INFO] assets %s: %s %s -> %s%s", m.ProviderID, m.Server, m.AssetsWebRoot,
+					log.Infof("assets %s: %s %s -> %s%s", m.ProviderID, m.Server, m.AssetsWebRoot,
 						m.AssetsLocation, onlyFrom)
 				}
 			}
@@ -224,7 +224,7 @@ func findMatchingMappers(s *Service, srvName string) []URLMapper {
 
 		re, err := regexp.Compile(mapperServer)
 		if err != nil {
-			log.Printf("[WARN] invalid regexp %s: %s", mapperServer, err)
+			log.Warnf("invalid regexp %s: %s", mapperServer, err)
 			continue
 		}
 
@@ -335,7 +335,7 @@ func (s *Service) CheckHealth() (pingResult map[string]error) {
 
 				errMsg, err := m.ping()
 				if err != nil {
-					log.Printf("[DEBUG] %s", errMsg)
+					log.Debugf("%s", errMsg)
 				}
 				outCh <- pingError{m.PingURL, err}
 			}(m)
@@ -359,7 +359,7 @@ func (s *Service) mergeLists() (res []URLMapper) {
 	for _, p := range s.providers {
 		lst, err := p.List()
 		if err != nil {
-			log.Printf("[DEBUG] can't get list for %s, %v", p, err)
+			log.Debugf("can't get list for %s, %v", p, err)
 			continue
 		}
 		for i := range lst {
@@ -431,7 +431,7 @@ func (s *Service) extendMapper(m URLMapper) URLMapper {
 
 	rx, err := regexp.Compile("^" + strings.TrimSuffix(src, "/") + "/(.*)")
 	if err != nil {
-		log.Printf("[WARN] can't extend %s, %v", m.SrcMatch.String(), err)
+		log.Warnf("can't extend %s, %v", m.SrcMatch.String(), err)
 		return m
 	}
 	m.SrcMatch = *rx
