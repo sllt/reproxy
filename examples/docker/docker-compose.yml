@@ -1,10 +1,10 @@
 services:
   reproxy:
-    image: umputun/reproxy:master
+    image: sllt/reproxy:latest
     container_name: reproxy
     hostname: reproxy
     ports:
-      - "80:8080"
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./web:/web
@@ -22,7 +22,7 @@ services:
 
   # automatic destination, will be mapped for ^/svc1/(.*)
   svc1:
-    image: ghcr.io/umputun/echo-http
+    image: ghcr.io/sllt/echo-http
     hostname: svc1
     container_name: svc1
     command: --message="hello world from svc1"
@@ -30,7 +30,7 @@ services:
 
   # automatic destination, will be mapped for ^/svc2/(.*)
   svc2:
-    image: ghcr.io/umputun/echo-http
+    image: ghcr.io/sllt/echo-http
     hostname: svc2
     container_name: svc2
     command: --message="hello world from svc2"
